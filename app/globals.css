@@ -1,0 +1,12 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
+@import 'tailwindcss';
+@theme {
+  --font-sans: 'DM Sans', sans-serif;
+  --font-display: 'Manrope', sans-serif;
+  --color-brand: #26a773;
+  --color-ink: #20362c;
+}
+html, body { height: 100%; }
+body { margin: 0; }
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; }
