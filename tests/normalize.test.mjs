@@ -43,4 +43,5 @@ test('image and sticker are retained from history and incoming notifications', (
   } });
   assert.equal(sticker?.kind, 'sticker');
   assert.equal(sticker?.url, 'https://example.com/another.webp');
+  assert.equal(mergeMessages([sticker], [{ ...sticker, url: undefined }])[0].url, sticker.url);
 });

@@ -46,7 +46,8 @@ export function mergeMessages(old: ChatMessage[], fresh: ChatMessage[]): ChatMes
   for (const message of fresh) {
     const previous = byId.get(message.id);
     const status = (rank[previous?.status ?? ''] ?? 0) > (rank[message.status ?? ''] ?? 0) ? previous?.status : message.status;
-    byId.set(message.id, { ...previous, ...message, status });
+    byId.set(message.id, { ...previous, ...message, url: message.url || previous?.url,
+      fileName: message.fileName || previous?.fileName, mimeType: message.mimeType || previous?.mimeType, status });
   }
   return [...byId.values()].sort((a, b) => a.timestamp - b.timestamp);
 }
