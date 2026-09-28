@@ -28,3 +28,19 @@ test('notification appears immediately, then history refresh deduplicates it', (
   assert.equal(incoming?.text, 'hello');
   assert.equal(mergeMessages([incoming], [incoming]).length, 1);
 });
+
+test('image and sticker are retained from history and incoming notifications', () => {
+  const history = normalizeHistory([
+    { idMessage: 'image-1', chatId: '1234567890@c.us', type: 'incoming', typeMessage: 'imageMessage', timestamp: 1, downloadUrl: 'https://example.com/photo.jpg', caption: '' },
+    { idMessage: 'sticker-1', chatId: '1234567890@c.us', type: 'incoming', typeMessage: 'stickerMessage', timestamp: 2, downloadUrl: 'https://example.com/sticker.webp' },
+  ], '1234567890@c.us');
+  assert.deepEqual(history.map(item => item.kind), ['image', 'sticker']);
+  assert.equal(history[0].url, 'https://example.com/photo.jpg');
+  const sticker = incomingFromNotification({ receiptId: 2, body: {
+    typeWebhook: 'incomingMessageReceived', idMessage: 'sticker-2', timestamp: 3,
+    senderData: { chatId: '1234567890@c.us' },
+    messageData: { typeMessage: 'stickerMessage', fileMessageData: { downloadUrl: 'https://example.com/another.webp', caption: '' } },
+  } });
+  assert.equal(sticker?.kind, 'sticker');
+  assert.equal(sticker?.url, 'https://example.com/another.webp');
+});

@@ -17,9 +17,11 @@ export function useChat() {
   const [credentials, setCredentials] = useState<Credentials | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [customChats, setCustomChats] = useState<Chat[]>([]);
+  const [readOverrides, setReadOverrides] = useState<Record<string, boolean>>({});
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
   const selectedRef = useRef(selected);
+  const readTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   useEffect(() => { selectedRef.current = selected; }, [selected]);
 
   const id = credentials?.idInstance ?? '';
@@ -33,7 +35,8 @@ export function useChat() {
   const settingsQuery = useQuery({ queryKey: keys.settings(id), queryFn: () => greenApi.settings(credentials!), enabled: !!credentials,
     staleTime: 60_000 });
 
-  const chats = [...customChats.filter(item => !(chatsQuery.data ?? []).some(remote => remote.id === item.id)), ...(chatsQuery.data ?? [])];
+  const chats = [...customChats.filter(item => !(chatsQuery.data ?? []).some(remote => remote.id === item.id)), ...(chatsQuery.data ?? [])]
+    .map(chat => readOverrides[chat.id] ? { ...chat, unreadCount: 0 } : chat);
   const current = chats.find(item => item.id === selected);
 
   const connect = useCallback(async (value: Credentials) => {
@@ -44,24 +47,45 @@ export function useChat() {
   }, []);
 
   const disconnect = useCallback(() => {
-    setCredentials(null); setSelected(null); setCustomChats([]); setError(''); cache.clear();
+    readTimers.current.forEach(clearTimeout); readTimers.current.clear();
+    setCredentials(null); setSelected(null); setCustomChats([]); setReadOverrides({}); setError(''); cache.clear();
   }, [cache]);
+
+  const markRead = useCallback((chatId: string) => {
+    if (!credentials) return;
+    setReadOverrides(old => ({ ...old, [chatId]: true }));
+    cache.setQueryData<Chat[]>(keys.chats(id), old => (old ?? []).map(chat => chat.id === chatId ? { ...chat, unreadCount: 0 } : chat));
+    const timer = readTimers.current.get(chatId);
+    if (timer) clearTimeout(timer);
+    readTimers.current.set(chatId, setTimeout(() => {
+      readTimers.current.delete(chatId);
+      void greenApi.read(credentials, chatId).then(response => {
+        if (!response.setRead) throw new Error('Не удалось отметить чат прочитанным.');
+      }).catch(cause => {
+        setReadOverrides(old => { const updated = { ...old }; delete updated[chatId]; return updated; });
+        void cache.invalidateQueries({ queryKey: keys.chats(id) });
+        setError(cause instanceof Error ? cause.message : 'Ошибка отметки прочтения.');
+      });
+    }, 350));
+  }, [credentials, cache, id]);
+
+  const select = useCallback((chatId: string) => { setSelected(chatId); markRead(chatId); }, [markRead]);
 
   const addChat = useCallback((phone: string) => {
     const digits = phone.replace(/\D/g, '');
     if (!/^\d{8,15}$/.test(digits)) throw new Error('Введите номер с кодом страны.');
     const chatId = `${digits}@c.us`;
     setCustomChats(old => old.some(chat => chat.id === chatId) ? old : [{ id: chatId, name: `+${digits}`, type: 'user', unreadCount: 0 }, ...old]);
-    setSelected(chatId);
+    select(chatId);
     return chatId;
-  }, []);
+  }, [select]);
 
   const send = useCallback(async (text: string) => {
     if (!credentials || !selected || !text.trim() || sending) return;
     setSending(true); setError('');
     const key = keys.history(credentials.idInstance, selected);
     const temporary = `pending-${Date.now()}`;
-    const message: ChatMessage = { id: temporary, chatId: selected, direction: 'outgoing', text: text.trim(), timestamp: Math.floor(Date.now() / 1000), pending: true };
+    const message: ChatMessage = { id: temporary, chatId: selected, direction: 'outgoing', kind: 'text', text: text.trim(), timestamp: Math.floor(Date.now() / 1000), pending: true };
     cache.setQueryData<ChatMessage[]>(key, old => mergeMessages(old ?? [], [message]));
     try {
       const result = await greenApi.send(credentials, selected, text.trim());
@@ -100,10 +124,12 @@ export function useChat() {
           const body = notification.body;
           const incoming = incomingFromNotification(notification);
           if (incoming) {
+            if (selectedRef.current !== incoming.chatId) setReadOverrides(old => { const updated = { ...old }; delete updated[incoming.chatId]; return updated; });
             cache.setQueryData<ChatMessage[]>(keys.history(id, incoming.chatId), old => mergeMessages(old ?? [], [incoming]));
             cache.setQueryData<Chat[]>(keys.chats(id), old => {
               const matching = (old ?? []).find(chat => chat.id === incoming.chatId);
-              const chat: Chat = matching ?? { id: incoming.chatId, name: body.senderData?.senderName || greenApi.displayId(incoming.chatId), type: incoming.chatId.endsWith('@g.us') ? 'group' : 'user', unreadCount: 0 };
+              const chat: Chat = matching ? { ...matching } : { id: incoming.chatId, name: body.senderData?.senderName || greenApi.displayId(incoming.chatId), type: incoming.chatId.endsWith('@g.us') ? 'group' : 'user', unreadCount: 0 };
+              if (selectedRef.current !== incoming.chatId) chat.unreadCount += 1;
               return [chat, ...(old ?? []).filter(item => item.id !== chat.id)];
             });
           } else if (body?.typeWebhook === 'outgoingMessageStatus' && body.chatId && body.idMessage && body.status) {
@@ -113,7 +139,10 @@ export function useChat() {
           }
           // Acknowledge only after the event has been applied to the local cache.
           await greenApi.acknowledge(credentials!, notification.receiptId);
-          if (incoming && selectedRef.current === incoming.chatId) void cache.invalidateQueries({ queryKey: keys.history(id, incoming.chatId) });
+          if (incoming && selectedRef.current === incoming.chatId) {
+            markRead(incoming.chatId);
+            void cache.invalidateQueries({ queryKey: keys.history(id, incoming.chatId) });
+          }
         } catch (cause) {
           if (stopped) return;
           failures++;
@@ -133,8 +162,8 @@ export function useChat() {
     document.addEventListener('visibilitychange', resume);
     resume();
     return () => { stopped = true; controller.abort(); document.removeEventListener('visibilitychange', resume); };
-  }, [credentials, cache, id]);
+  }, [credentials, cache, id, markRead]);
 
-  return { credentials, selected, select: setSelected, chats, current, messages: historyQuery.data ?? [],
+  return { credentials, selected, select, chats, current, messages: historyQuery.data ?? [],
     chatsQuery, historyQuery, settings: settingsQuery.data, error, setError, sending, connect, disconnect, addChat, send, configure, refresh };
 }

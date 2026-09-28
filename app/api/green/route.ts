@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 
-type Action = 'state' | 'settings' | 'configure' | 'chats' | 'history' | 'send' | 'receive' | 'delete';
+type Action = 'state' | 'settings' | 'configure' | 'chats' | 'history' | 'send' | 'receive' | 'delete' | 'read' | 'avatar';
 
 const actions: Record<Action, { method: 'GET' | 'POST' | 'DELETE'; endpoint: string }> = {
   state: { method: 'GET', endpoint: 'getStateInstance' },
@@ -10,6 +10,8 @@ const actions: Record<Action, { method: 'GET' | 'POST' | 'DELETE'; endpoint: str
   configure: { method: 'POST', endpoint: 'setSettings' },
   chats: { method: 'GET', endpoint: 'getChats' },
   history: { method: 'POST', endpoint: 'getChatHistory' },
+  read: { method: 'POST', endpoint: 'readChat' },
+  avatar: { method: 'POST', endpoint: 'getAvatar' },
   send: { method: 'POST', endpoint: 'sendMessage' },
   receive: { method: 'GET', endpoint: 'receiveNotification' },
   delete: { method: 'DELETE', endpoint: 'deleteNotification' },
@@ -36,7 +38,7 @@ export async function POST(request: NextRequest) {
     const selected = actions[action as Action];
     let suffix = '';
     let payload: string | undefined;
-    if (action === 'send' || action === 'history') {
+    if (action === 'send' || action === 'history' || action === 'read' || action === 'avatar') {
       if (typeof chatId !== 'string' || !/^(\d{5,25}@(c\.us|lid)|[\d-]{5,50}@g\.us)$/.test(chatId)) {
         return NextResponse.json({ error: 'Введите номер с кодом страны.' }, { status: 400 });
       }
@@ -45,7 +47,8 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: 'Сообщение должно содержать от 1 до 20000 символов.' }, { status: 400 });
         }
         payload = JSON.stringify({ chatId, message: message.trim() });
-      } else payload = JSON.stringify({ chatId, count: 50 });
+      } else if (action === 'history') payload = JSON.stringify({ chatId, count: 50 });
+      else payload = JSON.stringify({ chatId });
     }
     if (action === 'delete') {
       if (!Number.isSafeInteger(receiptId) || receiptId < 0) {
