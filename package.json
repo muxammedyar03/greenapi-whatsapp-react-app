@@ -8,8 +8,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test tests/*.test.mjs"
+    "test": "node --experimental-strip-types --test tests/*.test.mjs",
+    "format": "prettier --write ."
   },
+  "//": "Formatter: Prettier. `npm run format` rewrites every source file in the same style as the chat UI — single quotes, semicolons, 2-space indent, expanded JSX.",
   "dependencies": {
     "@tailwindcss/postcss": "^4.3.3",
     "@tanstack/react-query": "^5.104.0",
@@ -23,6 +25,7 @@
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "prettier": "^3.9.9",
     "typescript": "^5.9.0"
   }
 }

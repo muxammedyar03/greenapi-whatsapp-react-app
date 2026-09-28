@@ -5,11 +5,124 @@ import { Logo, Avatar, icon } from './chat-shared';
 import { displayId } from '../lib/normalize';
 import { useChat } from '../hooks/use-chat';
 
-export function Sidebar({ app, openNew, mobileChat }: { app: ReturnType<typeof useChat>; openNew: () => void; mobileChat: boolean }) {
-  const [search, setSearch] = useState(''); const [configuring, setConfiguring] = useState(false);
-  const filtered = app.chats.filter(chat => `${chat.name} ${chat.id}`.toLowerCase().includes(search.toLowerCase()));
-  const needsSettings = app.settings && (app.settings.incomingWebhook !== 'yes' || Boolean(app.settings.webhookUrl));
-  async function configure() { setConfiguring(true); try { await app.configure(); } catch (cause) { app.setError(cause instanceof Error ? cause.message : 'Ошибка настройки.'); } finally { setConfiguring(false); } }
-  return <aside className={`flex h-full w-full shrink-0 flex-col border-r border-slate-100 bg-white md:w-[365px] ${mobileChat ? 'hidden md:flex' : ''}`}><header className="flex h-[78px] shrink-0 items-center justify-between border-b border-slate-100 px-6"><Logo /><button className={icon} title="Отключиться" onClick={app.disconnect}><LogOut size={19} /></button></header><div className="min-h-0 flex-1 overflow-y-auto"><div className="flex items-end justify-between px-6 pt-8 pb-6"><div><div className="font-display text-[10px] font-extrabold tracking-widest text-emerald-600">ВАШЕ ПРОСТРАНСТВО</div><h2 className="mt-1 font-display text-2xl font-extrabold text-slate-800">Сообщения</h2></div><button className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white" onClick={openNew} title="Новый чат"><Plus size={21} /></button></div>{needsSettings && <div className="mx-5 mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900"><strong>Приём сообщений не настроен.</strong><p>Включите входящие уведомления и HTTP API для этого инстанса.</p><button disabled={configuring} onClick={() => void configure()} className="mt-2 font-bold underline">{configuring ? 'Настраиваем...' : 'Настроить приём'}</button></div>}<div className="mx-5 mb-7 flex h-11 items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 px-3 text-slate-400"><Search size={18} /><input className="min-w-0 flex-1 bg-transparent text-sm text-slate-800 outline-none" placeholder="Поиск по чатам" value={search} onChange={e => setSearch(e.target.value)} /></div><div className="px-6 pb-3 font-display text-[10px] font-extrabold tracking-widest text-slate-400">НЕДАВНИЕ ЧАТЫ <span className="ml-1 rounded bg-slate-100 px-1.5 py-0.5">{filtered.length}</span></div>{app.chatsQuery.isLoading && !app.chats.length ? <p className="p-7 text-center text-sm text-slate-400">Загружаем чаты...</p> : filtered.length ? filtered.map(chat => <button key={chat.id} onClick={() => app.select(chat.id)} className={`flex w-full items-center gap-3 border-l-[3px] px-5 py-3 text-left hover:bg-emerald-50 ${app.selected === chat.id ? 'border-emerald-600 bg-emerald-50' : 'border-transparent'}`}><Avatar chat={chat} credentials={app.credentials!} /><span className="min-w-0 flex-1"><strong className="block truncate font-display text-sm font-bold text-slate-800">{chat.name}</strong><small className="mt-1 block truncate text-xs text-slate-400">{displayId(chat.id)}</small></span>{chat.unreadCount > 0 && <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-xs text-white">{chat.unreadCount}</span>}</button>) : <div className="flex flex-col items-center gap-2 px-7 py-10 text-center text-slate-400"><MessageCircle size={27} /><strong className="text-sm text-slate-600">Чаты не найдены</strong><button className="text-xs font-bold text-emerald-700" onClick={openNew}>Создать чат</button></div>}</div><footer className="flex h-20 shrink-0 items-center gap-3 border-t border-slate-100 px-6"><span className="h-2.5 w-2.5 rounded-full bg-emerald-400 ring-4 ring-emerald-50" /><div className="min-w-0 flex-1"><strong className="block text-xs text-slate-700">WhatsApp подключён</strong><small className="text-xs text-slate-400">Инстанс #{app.credentials?.idInstance}</small></div><button className={icon} title="Обновить" onClick={() => void app.refresh()}><RefreshCw size={18} /></button></footer></aside>;
-}
+export function Sidebar({
+  app,
+  openNew,
+  mobileChat,
+}: {
+  app: ReturnType<typeof useChat>;
+  openNew: () => void;
+  mobileChat: boolean;
+}) {
+  const [search, setSearch] = useState('');
+  const [configuring, setConfiguring] = useState(false);
+  const filtered = app.chats.filter((chat) =>
+    `${chat.name} ${chat.id}`.toLowerCase().includes(search.toLowerCase()),
+  );
+  const needsSettings =
+    app.settings && (app.settings.incomingWebhook !== 'yes' || Boolean(app.settings.webhookUrl));
 
+  async function configure() {
+    setConfiguring(true);
+    try {
+      await app.configure();
+    } catch (cause) {
+      app.setError(cause instanceof Error ? cause.message : 'Ошибка настройки.');
+    } finally {
+      setConfiguring(false);
+    }
+  }
+
+  return (
+    <aside
+      className={`flex h-full w-full shrink-0 flex-col border-r border-slate-100 bg-white md:w-[365px] ${mobileChat ? 'hidden md:flex' : ''}`}>
+      <header className="flex h-[78px] shrink-0 items-center justify-between border-b border-slate-100 px-6">
+        <Logo />
+        <div className="flex items-center gap-2">
+          <button
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-600 text-white"
+            onClick={openNew}
+            title="Новый чат">
+            <Plus size={18} />
+          </button>
+        </div>
+      </header>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="flex items-end justify-between px-6 py-4">
+          <h2 className="font-display text-2xl font-extrabold text-slate-800">Сообщения</h2>
+        </div>
+        {needsSettings && (
+          <div className="mx-5 mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
+            <strong>Приём сообщений не настроен.</strong>
+            <p>Включите входящие уведомления и HTTP API для этого инстанса.</p>
+            <button
+              disabled={configuring}
+              onClick={() => void configure()}
+              className="mt-2 font-bold underline">
+              {configuring ? 'Настраиваем...' : 'Настроить приём'}
+            </button>
+          </div>
+        )}
+        <div className="mx-5 mb-7 flex h-11 items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 px-3 text-slate-400">
+          <Search size={18} />
+          <input
+            className="min-w-0 flex-1 bg-transparent text-sm text-slate-800 outline-none"
+            placeholder="Поиск по чатам"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <div className="px-6 pb-3 font-display text-[10px] font-extrabold tracking-widest text-slate-700">
+          НЕДАВНИЕ ЧАТЫ
+          <span className="ml-1 rounded-full bg-slate-100 px-1.5 py-0.5">{filtered.length}</span>
+        </div>
+        {app.chatsQuery.isLoading && !app.chats.length ? (
+          <p className="p-7 text-center text-sm text-slate-400">Загружаем чаты...</p>
+        ) : filtered.length ? (
+          filtered.map((chat) => (
+            <button
+              key={chat.id}
+              onClick={() => app.select(chat.id)}
+              className={`flex w-full items-center gap-3 border-l-[3px] px-5 py-3 text-left hover:bg-emerald-50 ${app.selected === chat.id ? 'border-emerald-600 bg-emerald-50' : 'border-transparent'}`}>
+              <Avatar chat={chat} credentials={app.credentials!} />
+              <span className="min-w-0 flex-1">
+                <strong className="block truncate font-display text-sm font-bold text-slate-800">
+                  {chat.name}
+                </strong>
+                <small className="mt-1 block truncate text-xs text-slate-400">
+                  {displayId(chat.id)}
+                </small>
+              </span>
+              {chat.unreadCount > 0 && (
+                <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-xs text-white">
+                  {chat.unreadCount}
+                </span>
+              )}
+            </button>
+          ))
+        ) : (
+          <div className="flex flex-col items-center gap-2 px-7 py-10 text-center text-slate-400">
+            <MessageCircle size={27} />
+            <strong className="text-sm text-slate-600">Чаты не найдены</strong>
+            <button className="text-xs font-bold text-emerald-700" onClick={openNew}>
+              Создать чат
+            </button>
+          </div>
+        )}
+      </div>
+      <footer className="flex h-20 shrink-0 items-center gap-3 border-t border-slate-100 px-6">
+        <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 ring-4 ring-emerald-50" />
+        <div className="min-w-0 flex-1">
+          <strong className="block text-xs text-slate-700">WhatsApp подключён</strong>
+          <small className="text-xs text-slate-400">Инстанс #{app.credentials?.idInstance}</small>
+        </div>
+        <button className={icon} title="Обновить" onClick={() => void app.refresh()}>
+          <RefreshCw size={18} />
+        </button>
+        <button className={icon} title="Отключиться" onClick={app.disconnect}>
+          <LogOut size={19} />
+        </button>
+      </footer>
+    </aside>
+  );
+}

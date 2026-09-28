@@ -16,8 +16,15 @@ export function ChatApp() {
     if (app.selected) setMobileChat(true);
   }, [app.selected]);
 
-  if (!app.credentials)
-    return <Connection connect={app.connect} />;
+  if (!app.sessionReady) return <main className="h-dvh bg-emerald-50/50" />;
+  if (!app.credentials) return <Connection connect={app.connect} />;
 
-  return <main className="flex h-dvh w-full overflow-hidden bg-white"><Sidebar app={app} openNew={() => setNewChat(true)} mobileChat={mobileChat} /><Conversation app={app} mobileChat={mobileChat} close={() => setMobileChat(false)} />{newChat && <NewChat close={() => setNewChat(false)} add={app.addChat} />}</main>;
+  return (
+    <main className="flex h-dvh w-full overflow-hidden bg-white">
+      <Sidebar app={app} openNew={() => setNewChat(true)} mobileChat={mobileChat} />
+      <Conversation app={app} mobileChat={mobileChat} close={() => setMobileChat(false)} />
+      {newChat && <NewChat close={() => setNewChat(false)} add={app.addChat} />}
+      {showNewChat && <NewChat close={() => setShowNewChat(false)} add={app.addChat} />}
+    </main>
+  );
 }
