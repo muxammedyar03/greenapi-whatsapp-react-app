@@ -4,10 +4,11 @@ import { ChevronRight, Smartphone } from 'lucide-react';
 import { Logo, input, primary } from './chat-shared';
 import type { Credentials } from '../lib/types';
 
-export function Connection({ connect }: { connect: (value: Credentials) => Promise<void> }) {
+export function Connection({ connect }: { connect: (value: Credentials, remember: boolean) => Promise<void> }) {
   const [apiUrl, setApiUrl] = useState('https://api.greenapi.com');
   const [idInstance, setId] = useState('');
   const [apiTokenInstance, setToken] = useState('');
+  const [remember, setRemember] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   async function submit(event: React.FormEvent) {
@@ -15,11 +16,14 @@ export function Connection({ connect }: { connect: (value: Credentials) => Promi
     setBusy(true);
     setError('');
     try {
-      await connect({
-        apiUrl: apiUrl.trim().replace(/\/$/, ''),
-        idInstance: idInstance.trim(),
-        apiTokenInstance: apiTokenInstance.trim(),
-      });
+      await connect(
+        {
+          apiUrl: apiUrl.trim().replace(/\/$/, ''),
+          idInstance: idInstance.trim(),
+          apiTokenInstance: apiTokenInstance.trim(),
+        },
+        remember,
+      );
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Ошибка подключения.');
     } finally {
@@ -73,6 +77,20 @@ export function Connection({ connect }: { connect: (value: Credentials) => Promi
               required
             />
           </label>
+          <label className="flex items-start gap-3 text-sm text-slate-700">
+            <input
+              className="mt-0.5 h-4 w-4 accent-emerald-600"
+              type="checkbox"
+              checked={remember}
+              onChange={(e) => setRemember(e.target.checked)}
+            />
+            <span>
+              <span className="font-bold">Запомнить на этом устройстве</span>
+              <span className="mt-0.5 block text-xs leading-5 font-normal text-slate-500">
+                Без отметки данные остаются только в этой вкладке и исчезают после её закрытия.
+              </span>
+            </span>
+          </label>
           {error && (
             <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
               {error}
@@ -83,8 +101,8 @@ export function Connection({ connect }: { connect: (value: Credentials) => Promi
           </button>
         </form>
         <p className="mt-6 border-t border-slate-100 pt-5 text-xs leading-5 text-slate-400">
-          Данные подключения сохраняются в этом браузере и остаются после обновления страницы, пока
-          вы не выйдете.
+          С отметкой токен хранится в браузере, пока вы не выйдете. На общем компьютере оставьте
+          её выключенной.
         </p>
       </div>
       <p className="mt-5 text-center text-xs text-slate-500">

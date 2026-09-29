@@ -71,12 +71,12 @@ export function useChat() {
   ].map((chat) => (readOverrides[chat.id] ? { ...chat, unreadCount: 0 } : chat));
   const current = chats.find((item) => item.id === selected);
 
-  const connect = useCallback(async (value: Credentials) => {
+  const connect = useCallback(async (value: Credentials, remember: boolean) => {
     setError('');
     const state = await greenApi.state(value);
     if (state.stateInstance !== 'authorized')
       throw new Error('Инстанс не авторизован. Подключите WhatsApp через QR-код в GREEN-API.');
-    saveSession(value);
+    saveSession(value, remember);
     setCredentials(value);
   }, []);
 

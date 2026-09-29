@@ -2,10 +2,9 @@ import type { Credentials } from './types';
 
 const key = 'green-api-session';
 
-export function loadSession(): Credentials | null {
-  if (typeof window === 'undefined') return null;
+function read(storage: Storage): Credentials | null {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = storage.getItem(key);
     if (!raw) return null;
     const data = JSON.parse(raw) as Partial<Credentials>;
     if (
@@ -28,10 +27,23 @@ export function loadSession(): Credentials | null {
   }
 }
 
-export function saveSession(value: Credentials) {
-  localStorage.setItem(key, JSON.stringify(value));
+export function loadSession(): Credentials | null {
+  if (typeof window === 'undefined') return null;
+  return read(sessionStorage) ?? read(localStorage);
+}
+
+export function saveSession(value: Credentials, remember: boolean) {
+  const payload = JSON.stringify(value);
+  if (remember) {
+    localStorage.setItem(key, payload);
+    sessionStorage.removeItem(key);
+    return;
+  }
+  sessionStorage.setItem(key, payload);
+  localStorage.removeItem(key);
 }
 
 export function clearSession() {
   localStorage.removeItem(key);
+  sessionStorage.removeItem(key);
 }
